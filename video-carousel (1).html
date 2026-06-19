@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Carousel</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue-50: #E6F1FB;
+    --blue-100: #B5D4F4;
+    --blue-200: #85B7EB;
+    --blue-400: #378ADD;
+    --blue-600: #185FA5;
+    --blue-800: #0C447C;
+    --blue-900: #042C53;
+    --gray-50: #F1EFE8;
+    --gray-100: #D3D1C7;
+    --gray-200: #B4B2A9;
+    --gray-400: #888780;
+    --gray-600: #5F5E5A;
+    --gray-800: #444441;
+    --gray-900: #2C2C2A;
+    --green-400: #639922;
+    --green-600: #3B6D11;
+    --red-400: #E24B4A;
+    --red-600: #A32D2D;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f9fb;
+    color: var(--gray-900);
+    min-height: 100vh;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    background: #fff;
+    border-bottom: 1px solid var(--gray-100);
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  #topbar .brand {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--blue-800);
+    letter-spacing: -0.3px;
+  }
+  #topbar .brand span { color: var(--gray-400); font-weight: 400; margin-left: 6px; font-size: 13px; }
+  #admin-btn {
+    font-size: 12px;
+    padding: 5px 12px;
+    border: 1px solid var(--gray-100);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all .15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  #admin-btn:hover { border-color: var(--blue-400); color: var(--blue-600); }
+  #admin-btn svg { width: 14px; height: 14px; }
+
+  /* ── CAROUSEL ── */
+  #carousel-section { padding: 32px 24px; max-width: 1100px; margin: 0 auto; }
+
+  #carousel-wrap {
+    position: relative;
+    background: #fff;
+    border: 1px solid var(--gray-100);
+    border-radius: 12px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+  }
+
+  .slide {
+    display: none;
+    width: 100%; height: 100%;
+    position: relative;
+  }
+  .slide.active { display: flex; align-items: center; justify-content: center; }
+
+  .slide video {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    background: #000;
+  }
+
+  .slide .placeholder {
+    width: 100%; height: 100%;
+    background: var(--blue-50);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px;
+    color: var(--blue-600);
+  }
+  .slide .placeholder svg { width: 48px; height: 48px; opacity: .5; }
+  .slide .placeholder p { font-size: 14px; color: var(--gray-400); }
+
+  .slide-title {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,.6));
+    color: #fff;
+    padding: 32px 20px 16px;
+    font-size: 15px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+
+  .carousel-btn {
+    position: absolute;
+    top: 50%; transform: translateY(-50%);
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.9);
+    border: 1px solid var(--gray-100);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+    z-index: 10;
+  }
+  .carousel-btn:hover { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  #prev-btn { left: 12px; }
+  #next-btn { right: 12px; }
+  .carousel-btn svg { width: 18px; height: 18px; color: var(--gray-800); }
+
+  #dots {
+    display: flex; justify-content: center; gap: 6px;
+    margin-top: 14px;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gray-200);
+    cursor: pointer;
+    transition: background .2s;
+    border: none;
+  }
+  .dot.active { background: var(--blue-400); }
+
+  #slide-counter {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--gray-400);
+  }
+
+  /* ── EMPTY STATE ── */
+  #empty-state {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 340px;
+    color: var(--gray-400);
+    gap: 10px;
+  }
+  #empty-state svg { width: 48px; height: 48px; opacity: .4; }
+  #empty-state p { font-size: 14px; }
+
+  /* ── ADMIN PANEL ── */
+  #admin-panel {
+    display: none;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .panel-card {
+    background: #fff;
+    border: 1px solid var(--gray-100);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .panel-card h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--gray-50);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-card h2 svg { width: 16px; height: 16px; color: var(--blue-400); }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 500; color: var(--gray-600); margin-bottom: 5px; }
+  .field input, .field select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--gray-100);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--gray-900);
+    background: #fff;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--blue-400); }
+  .field .help { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+
+  .btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all .15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn svg { width: 14px; height: 14px; }
+  .btn-primary { background: var(--blue-600); color: #fff; }
+  .btn-primary:hover { background: var(--blue-800); }
+  .btn-secondary { background: var(--gray-50); color: var(--gray-800); border: 1px solid var(--gray-100); }
+  .btn-secondary:hover { background: var(--gray-100); }
+  .btn-danger { background: #fff; color: var(--red-600); border: 1px solid var(--gray-100); }
+  .btn-danger:hover { background: #fff8f8; border-color: var(--red-400); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* video list */
+  #video-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .video-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-100);
+    border-radius: 8px;
+    background: var(--gray-50);
+  }
+  .video-item .thumb {
+    width: 64px; height: 40px;
+    background: var(--blue-50);
+    border-radius: 4px;
+    border: 1px solid var(--blue-100);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .video-item .thumb svg { width: 20px; height: 20px; color: var(--blue-400); }
+  .video-item .info { flex: 1; min-width: 0; }
+  .video-item .info .name { font-size: 13px; font-weight: 500; color: var(--gray-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .video-item .info .meta { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+  .video-item .actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  /* drag handle */
+  .drag-handle { cursor: grab; color: var(--gray-200); padding: 4px; }
+  .drag-handle:active { cursor: grabbing; }
+  .drag-handle svg { width: 16px; height: 16px; }
+
+  /* upload zone */
+  #drop-zone {
+    border: 2px dashed var(--gray-200);
+    border-radius: 8px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    color: var(--gray-400);
+  }
+  #drop-zone:hover, #drop-zone.dragover {
+    border-color: var(--blue-400);
+    background: var(--blue-50);
+    color: var(--blue-600);
+  }
+  #drop-zone svg { width: 32px; height: 32px; margin-bottom: 8px; opacity: .6; }
+  #drop-zone p { font-size: 13px; }
+  #drop-zone .sub { font-size: 11px; margin-top: 4px; opacity: .7; }
+  #file-input { display: none; }
+
+  /* progress */
+  .progress-wrap { margin-top: 14px; display: none; }
+  .progress-bar-bg { height: 6px; background: var(--gray-100); border-radius: 3px; }
+  .progress-bar-fill { height: 6px; background: var(--blue-400); border-radius: 3px; transition: width .3s; }
+  .progress-label { font-size: 12px; color: var(--gray-600); margin-top: 6px; }
+
+  /* toast */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+    display: none;
+    z-index: 999;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  }
+  #toast.success { background: var(--green-600); }
+  #toast.error { background: var(--red-600); }
+  #toast.info { background: var(--blue-600); }
+
+  /* auth overlay */
+  #auth-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  #auth-overlay.visible { display: flex; }
+  #auth-box {
+    background: #fff;
+    border-radius: 14px;
+    padding: 32px;
+    width: 420px;
+    max-width: 95vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,.15);
+  }
+  #auth-box h3 { font-size: 16px; font-weight: 600; color: var(--gray-900); margin-bottom: 6px; }
+  #auth-box p { font-size: 13px; color: var(--gray-400); margin-bottom: 20px; }
+  #auth-box .close-overlay {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; cursor: pointer;
+    color: var(--gray-400);
+  }
+  #auth-box .gh-btn {
+    width: 100%;
+    padding: 10px;
+    background: #24292e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 16px;
+    transition: background .15s;
+  }
+  #auth-box .gh-btn:hover { background: #1a1e22; }
+  #auth-box .gh-btn svg { width: 20px; height: 20px; }
+  #auth-box .divider { text-align: center; font-size: 12px; color: var(--gray-400); margin-bottom: 16px; position: relative; }
+  #auth-box .divider::before, #auth-box .divider::after {
+    content: ''; position: absolute; top: 50%; width: 42%; height: 1px;
+    background: var(--gray-100);
+  }
+  #auth-box .divider::before { left: 0; }
+  #auth-box .divider::after { right: 0; }
+  #auth-box .token-field { position: relative; }
+  #auth-box .token-field input {
+    width: 100%; padding: 8px 36px 8px 10px;
+    border: 1px solid var(--gray-100); border-radius: 6px;
+    font-size: 13px; outline: none;
+  }
+  #auth-box .token-field input:focus { border-color: var(--blue-400); }
+  #auth-box .toggle-vis {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: var(--gray-400);
+  }
+  #auth-box .toggle-vis svg { width: 16px; height: 16px; }
+
+  /* settings */
+  #settings-section { display: none; }
+
+  /* status badge */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+  .status-badge.ok { background: #e8f5e9; color: var(--green-600); }
+  .status-badge.err { background: #fdecea; color: var(--red-600); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .status-dot.ok { background: var(--green-400); }
+  .status-dot.err { background: var(--red-400); }
+
+  .row { display: flex; gap: 8px; align-items: flex-start; }
+  .row .field { flex: 1; margin-bottom: 0; }
+
+  .section-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--gray-400); margin-bottom: 12px;
+  }
+
+  @media (max-width: 600px) {
+    #carousel-section, #admin-panel { padding: 16px; }
+    .panel-card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="brand">
+    Video Library
+    <span id="repo-label"></span>
+  </div>
+  <button id="admin-btn" onclick="openAuth()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    <span id="admin-btn-text">Admin login</span>
+  </button>
+</div>
+
+<!-- STUDENT VIEW: CAROUSEL -->
+<div id="carousel-section">
+  <div id="empty-state" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    <p>No videos have been added yet.</p>
+  </div>
+
+  <div id="carousel-wrap">
+    <button class="carousel-btn" id="prev-btn" onclick="changeSlide(-1)" aria-label="Previous">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="carousel-btn" id="next-btn" onclick="changeSlide(1)" aria-label="Next">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
+
+  <div id="dots"></div>
+  <p id="slide-counter"></p>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin-panel">
+
+  <!-- Repo Settings -->
+  <div class="panel-card" id="settings-section">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      GitHub repository
+    </h2>
+
+    <div class="row" style="margin-bottom:12px">
+      <div class="field">
+        <label>Repository owner</label>
+        <input type="text" id="gh-owner" placeholder="your-org" />
+        <p class="help">Your GitHub username or organisation</p>
+      </div>
+      <div class="field">
+        <label>Repository name</label>
+        <input type="text" id="gh-repo" placeholder="video-carousel" />
+        <p class="help">The repo where videos will be stored</p>
+      </div>
+    </div>
+    <div class="field">
+      <label>Videos folder (inside repo)</label>
+      <input type="text" id="gh-folder" placeholder="videos" value="videos" />
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px">
+      <div id="repo-status"></div>
+      <button class="btn btn-primary" onclick="saveRepoSettings()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Save settings
+      </button>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div class="panel-card">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload video
+    </h2>
+
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block;margin:0 auto"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p>Drop a video here or <strong>click to browse</strong></p>
+      <p class="sub">MP4, WebM, MOV · max 100 MB</p>
+    </div>
+    <input type="file" id="file-input" accept="video/*" onchange="onFileSelect(event)" />
+
+    <div class="field" style="margin-top:12px">
+      <label>Video title (optional)</label>
+      <input type="text" id="upload-title" placeholder="e.g. Module 1 – Introduction" />
+    </div>
+
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+      <p class="progress-label" id="progress-label">Preparing…</p>
+    </div>
+
+    <div style="margin-top:12px; text-align:right">
+      <button class="btn btn-primary" id="upload-btn" onclick="uploadVideo()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload to GitHub
+      </button>
+    </div>
+  </div>
+
+  <!-- Video list -->
+  <div class="panel-card">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      Videos in carousel
+    </h2>
+    <div id="video-list">
+      <p style="font-size:13px;color:var(--gray-400)">Loading…</p>
+    </div>
+    <div style="margin-top:14px;display:flex;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="saveOrder()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Save order
+      </button>
+    </div>
+  </div>
+
+  <!-- Logout -->
+  <div style="text-align:center;margin-bottom:32px">
+    <button class="btn btn-secondary" onclick="logout()">Sign out</button>
+  </div>
+</div>
+
+<!-- AUTH OVERLAY -->
+<div id="auth-overlay">
+  <div id="auth-box" style="position:relative">
+    <button class="close-overlay" onclick="closeAuth()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h3>Admin access</h3>
+    <p>Sign in with a GitHub Personal Access Token that has <strong>repo</strong> scope.</p>
+
+    <div class="token-field">
+      <input type="password" id="token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" />
+      <button class="toggle-vis" onclick="toggleTokenVis()">
+        <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+
+    <p class="help" style="font-size:11px;color:var(--gray-400);margin:6px 0 16px">
+      Token is stored in your browser only — never sent to anyone else.
+      <a href="https://github.com/settings/tokens/new?scopes=repo&description=VideoCarousel" target="_blank" style="color:var(--blue-600)">Create one here ↗</a>
+    </p>
+
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="loginWithToken()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.46-1.11-1.46-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.95 0-1.09.39-1.98 1.03-2.68-.10-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 6.8c.85 0 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.85-2.34 4.7-4.57 4.95.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 22 12c0-5.52-4.48-10-10-10z"/></svg>
+      Sign in with token
+    </button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let state = {
+  token: localStorage.getItem('vc_token') || '',
+  ghUser: localStorage.getItem('vc_user') || '',
+  owner: localStorage.getItem('vc_owner') || '',
+  repo: localStorage.getItem('vc_repo') || '',
+  folder: localStorage.getItem('vc_folder') || 'videos',
+  videos: [],      // [{name, title, sha, url}]
+  currentSlide: 0,
+  selectedFile: null,
+  isAdmin: false,
+};
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  if (state.token) {
+    const ok = await verifyToken();
+    if (ok) enterAdmin();
+  }
+  document.getElementById('gh-owner').value = state.owner;
+  document.getElementById('gh-repo').value = state.repo;
+  document.getElementById('gh-folder').value = state.folder || 'videos';
+  if (state.owner && state.repo) await loadVideos();
+  else renderCarousel();
+});
+
+// ── AUTH ───────────────────────────────────────────────────────────────────
+function openAuth() {
+  if (state.isAdmin) { logout(); return; }
+  document.getElementById('auth-overlay').classList.add('visible');
+  document.getElementById('token-input').focus();
+}
+function closeAuth() { document.getElementById('auth-overlay').classList.remove('visible'); }
+
+function toggleTokenVis() {
+  const inp = document.getElementById('token-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function loginWithToken() {
+  const tok = document.getElementById('token-input').value.trim();
+  if (!tok) { toast('Paste your GitHub token', 'error'); return; }
+  state.token = tok;
+  const ok = await verifyToken();
+  if (ok) {
+    localStorage.setItem('vc_token', tok);
+    closeAuth();
+    enterAdmin();
+    if (state.owner && state.repo) await loadVideos();
+  } else {
+    toast('Token invalid or insufficient permissions', 'error');
+  }
+}
+
+async function verifyToken() {
+  try {
+    const r = await ghFetch('https://api.github.com/user');
+    if (!r.ok) return false;
+    const d = await r.json();
+    state.ghUser = d.login;
+    localStorage.setItem('vc_user', d.login);
+    return true;
+  } catch { return false; }
+}
+
+function enterAdmin() {
+  state.isAdmin = true;
+  document.getElementById('admin-btn-text').textContent = `${state.ghUser} · Sign out`;
+  document.getElementById('carousel-section').style.display = 'none';
+  document.getElementById('admin-panel').style.display = 'block';
+}
+
+function logout() {
+  state.token = ''; state.isAdmin = false; state.ghUser = '';
+  localStorage.removeItem('vc_token'); localStorage.removeItem('vc_user');
+  document.getElementById('admin-btn-text').textContent = 'Admin login';
+  document.getElementById('admin-panel').style.display = 'none';
+  document.getElementById('carousel-section').style.display = 'block';
+  renderCarousel();
+}
+
+// ── GITHUB API ─────────────────────────────────────────────────────────────
+function ghFetch(url, opts = {}) {
+  return fetch(url, {
+    ...opts,
+    headers: {
+      'Authorization': `Bearer ${state.token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    }
+  });
+}
+
+function apiBase() {
+  return `https://api.github.com/repos/${state.owner}/${state.repo}`;
+}
+
+// load manifest.json from repo (list of videos with order)
+async function loadVideos() {
+  if (!state.owner || !state.repo) { state.videos = []; renderCarousel(); renderAdminList(); return; }
+  try {
+    const r = await fetch(
+      `https://raw.githubusercontent.com/${state.owner}/${state.repo}/main/${state.folder}/manifest.json`,
+      { cache: 'no-cache' }
+    );
+    if (r.ok) {
+      state.videos = await r.json();
+    } else {
+      state.videos = [];
+    }
+  } catch { state.videos = []; }
+  renderCarousel();
+  if (state.isAdmin) renderAdminList();
+}
+
+async function saveManifest() {
+  const path = `${state.folder}/manifest.json`;
+  // check if file exists for SHA
+  let sha = '';
+  try {
+    const r = await ghFetch(`${apiBase()}/contents/${path}`);
+    if (r.ok) { const d = await r.json(); sha = d.sha; }
+  } catch {}
+
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(state.videos, null, 2))));
+  const body = { message: 'Update video manifest', content };
+  if (sha) body.sha = sha;
+
+  const r = await ghFetch(`${apiBase()}/contents/${path}`, {
+    method: 'PUT',
+    body: JSON.stringify(body)
+  });
+  return r.ok;
+}
+
+// ── UPLOAD ─────────────────────────────────────────────────────────────────
+function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
+function onDragLeave() { document.getElementById('drop-zone').classList.remove('dragover'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) setFile(file);
+}
+function onFileSelect(e) { if (e.target.files[0]) setFile(e.target.files[0]); }
+
+function setFile(file) {
+  if (!file.type.startsWith('video/')) { toast('Please select a video file', 'error'); return; }
+  if (file.size > 100 * 1024 * 1024) { toast('File must be under 100 MB', 'error'); return; }
+  state.selectedFile = file;
+  document.getElementById('upload-btn').disabled = false;
+  document.getElementById('drop-zone').querySelector('p').textContent = `✓ ${file.name}`;
+  if (!document.getElementById('upload-title').value) {
+    document.getElementById('upload-title').value = file.name.replace(/\.[^.]+$/, '');
+  }
+}
+
+async function uploadVideo() {
+  if (!state.selectedFile) return;
+  if (!state.owner || !state.repo) { toast('Configure repository settings first', 'error'); return; }
+
+  const file = state.selectedFile;
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${state.folder}/${safeName}`;
+  const title = document.getElementById('upload-title').value.trim() || safeName;
+
+  setProgress(true, 'Reading file…', 10);
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result.split(',')[1];
+    setProgress(true, 'Uploading to GitHub…', 40);
+
+    // check existing SHA
+    let sha = '';
+    try {
+      const r = await ghFetch(`${apiBase()}/contents/${path}`);
+      if (r.ok) { const d = await r.json(); sha = d.sha; }
+    } catch {}
+
+    const body = { message: `Add video: ${safeName}`, content: base64 };
+    if (sha) body.sha = sha;
+
+    try {
+      const r = await ghFetch(`${apiBase()}/contents/${path}`, {
+        method: 'PUT',
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) { toast('Upload failed — check repo permissions', 'error'); setProgress(false); return; }
+
+      setProgress(true, 'Updating manifest…', 80);
+      const rawUrl = `https://raw.githubusercontent.com/${state.owner}/${state.repo}/main/${path}`;
+      state.videos.push({ name: safeName, title, path, url: rawUrl });
+      const ok = await saveManifest();
+
+      setProgress(false);
+      if (ok) {
+        toast('Video uploaded!', 'success');
+        state.selectedFile = null;
+        document.getElementById('upload-btn').disabled = true;
+        document.getElementById('drop-zone').querySelector('p').innerHTML = 'Drop a video here or <strong>click to browse</strong>';
+        document.getElementById('upload-title').value = '';
+        document.getElementById('file-input').value = '';
+        renderCarousel();
+        renderAdminList();
+      } else {
+        toast('Video uploaded but manifest save failed', 'error');
+      }
+    } catch { toast('Network error during upload', 'error'); setProgress(false); }
+  };
+  reader.readAsDataURL(file);
+}
+
+function setProgress(show, label = '', pct = 0) {
+  const w = document.getElementById('progress-wrap');
+  w.style.display = show ? 'block' : 'none';
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = label;
+}
+
+// ── SETTINGS ───────────────────────────────────────────────────────────────
+async function saveRepoSettings() {
+  const owner = document.getElementById('gh-owner').value.trim();
+  const repo = document.getElementById('gh-repo').value.trim();
+  const folder = document.getElementById('gh-folder').value.trim() || 'videos';
+  if (!owner || !repo) { toast('Fill in owner and repo name', 'error'); return; }
+  state.owner = owner; state.repo = repo; state.folder = folder;
+  localStorage.setItem('vc_owner', owner);
+  localStorage.setItem('vc_repo', repo);
+  localStorage.setItem('vc_folder', folder);
+  document.getElementById('repo-label').textContent = `${owner}/${repo}`;
+  await loadVideos();
+  updateRepoStatus(true);
+  toast('Repository saved', 'success');
+}
+
+function updateRepoStatus(ok) {
+  const el = document.getElementById('repo-status');
+  el.innerHTML = ok
+    ? `<span class="status-badge ok"><span class="status-dot ok"></span>Connected</span>`
+    : `<span class="status-badge err"><span class="status-dot err"></span>Not connected</span>`;
+}
+
+// ── ADMIN VIDEO LIST ────────────────────────────────────────────────────────
+function renderAdminList() {
+  const el = document.getElementById('video-list');
+  if (!state.videos.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--gray-400)">No videos yet. Upload one above.</p>';
+    return;
+  }
+  el.innerHTML = '';
+  state.videos.forEach((v, i) => {
+    const item = document.createElement('div');
+    item.className = 'video-item';
+    item.draggable = true;
+    item.dataset.index = i;
+    item.innerHTML = `
+      <div class="drag-handle" title="Drag to reorder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+      </div>
+      <div class="thumb">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><polygon points="10 8 16 11 10 14 10 8" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div class="info">
+        <div class="name">${v.title || v.name}</div>
+        <div class="meta">${v.name}</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="editTitle(${i})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Rename
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="deleteVideo(${i})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          Remove
+        </button>
+      </div>
+    `;
+    addDragEvents(item);
+    el.appendChild(item);
+  });
+  if (state.owner && state.repo) updateRepoStatus(true);
+}
+
+async function editTitle(i) {
+  const t = prompt('New title:', state.videos[i].title || state.videos[i].name);
+  if (t === null) return;
+  state.videos[i].title = t.trim();
+  const ok = await saveManifest();
+  if (ok) { toast('Title updated', 'success'); renderAdminList(); renderCarousel(); }
+  else toast('Save failed', 'error');
+}
+
+async function deleteVideo(i) {
+  if (!confirm(`Remove "${state.videos[i].title || state.videos[i].name}" from the carousel?\n\nThe file will remain in the repository.`)) return;
+  state.videos.splice(i, 1);
+  const ok = await saveManifest();
+  if (ok) { toast('Removed from carousel', 'success'); renderAdminList(); renderCarousel(); }
+  else toast('Save failed', 'error');
+}
+
+async function saveOrder() {
+  const ok = await saveManifest();
+  toast(ok ? 'Order saved' : 'Save failed', ok ? 'success' : 'error');
+}
+
+// ── DRAG & DROP REORDER ────────────────────────────────────────────────────
+let dragSrc = null;
+function addDragEvents(el) {
+  el.addEventListener('dragstart', e => { dragSrc = el; e.dataTransfer.effectAllowed = 'move'; el.style.opacity = '.5'; });
+  el.addEventListener('dragend', () => { el.style.opacity = '1'; });
+  el.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    if (dragSrc === el) return;
+    const from = +dragSrc.dataset.index;
+    const to = +el.dataset.index;
+    const moved = state.videos.splice(from, 1)[0];
+    state.videos.splice(to, 0, moved);
+    renderAdminList();
+  });
+}
+
+// ── CAROUSEL (STUDENT VIEW) ────────────────────────────────────────────────
+function renderCarousel() {
+  const wrap = document.getElementById('carousel-wrap');
+  const dots = document.getElementById('dots');
+  const counter = document.getElementById('slide-counter');
+  const empty = document.getElementById('empty-state');
+
+  wrap.innerHTML = '';
+  dots.innerHTML = '';
+  counter.textContent = '';
+
+  // re-add nav buttons
+  const prev = document.createElement('button');
+  prev.className = 'carousel-btn'; prev.id = 'prev-btn';
+  prev.setAttribute('aria-label', 'Previous');
+  prev.onclick = () => changeSlide(-1);
+  prev.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>`;
+  wrap.appendChild(prev);
+
+  const next = document.createElement('button');
+  next.className = 'carousel-btn'; next.id = 'next-btn';
+  next.setAttribute('aria-label', 'Next');
+  next.onclick = () => changeSlide(1);
+  next.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`;
+  wrap.appendChild(next);
+
+  if (!state.videos.length) {
+    empty.style.display = 'flex';
+    wrap.style.display = 'none';
+    dots.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  wrap.style.display = 'block';
+
+  state.videos.forEach((v, i) => {
+    const slide = document.createElement('div');
+    slide.className = 'slide' + (i === 0 ? ' active' : '');
+    slide.innerHTML = `
+      <video controls preload="metadata" src="${v.url}"></video>
+      ${v.title ? `<div class="slide-title">${v.title}</div>` : ''}
+    `;
+    wrap.appendChild(slide);
+
+    const dot = document.createElement('button');
+    dot.className = 'dot' + (i === 0 ? ' active' : '');
+    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+    dot.onclick = () => goToSlide(i);
+    dots.appendChild(dot);
+  });
+
+  state.currentSlide = 0;
+  updateCounter();
+  prev.appendChild(next); // noop — they're already in wrap
+}
+
+function changeSlide(dir) {
+  const n = state.videos.length;
+  if (!n) return;
+  goToSlide((state.currentSlide + dir + n) % n);
+}
+
+function goToSlide(i) {
+  const slides = document.querySelectorAll('.slide');
+  const dotEls = document.querySelectorAll('.dot');
+  if (!slides.length) return;
+  slides[state.currentSlide].classList.remove('active');
+  dotEls[state.currentSlide]?.classList.remove('active');
+  state.currentSlide = i;
+  slides[i].classList.add('active');
+  dotEls[i]?.classList.add('active');
+  updateCounter();
+}
+
+function updateCounter() {
+  const n = state.videos.length;
+  document.getElementById('slide-counter').textContent = n > 1 ? `${state.currentSlide + 1} / ${n}` : '';
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = type;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+// init repo label
+if (state.owner && state.repo) {
+  document.getElementById('repo-label').textContent = `${state.owner}/${state.repo}`;
+}
+</script>
+</body>
+</html>
